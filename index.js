@@ -1,78 +1,47 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const multer = require('multer');
-const mime = require('mime-types');
-
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
-app.use(bodyParser.json());
-const upload = multer(); // For file uploads
+app.use(express.json()); // To parse JSON requests
 
-// POST Endpoint
-app.post('/bfhl', upload.single('file'), (req, res) => {
-    const { full_name, dob, collegeEmail, collegeRollNo, data } = req.body;
+// Hardcoded user details
+const userDetails = {
+  user_id: "john_doe_17091999",
+  email: "john@xyz.com",
+  roll_number: "ABCD123",
+};
 
-    // User ID formatting
-    const user_id = `${full_name.replace(/\s+/g, '_')}_${dob.split('-').reverse().join('')}`;
+// POST method for the /bfhl route
+app.post('/bfhl', (req, res) => {
+  const data = req.body.data;
 
-    // Initialize arrays
-    const numbers = [];
-    const alphabets = [];
-    let highestLowercase = [];
-    let file_valid = false;
-    let file_mime_type = null;
-    let file_size_kb = 0;
+  if (!Array.isArray(data)) {
+    return res.status(400).json({ is_success: false, message: "Invalid input" });
+  }
 
-    // Process input data
-    if (data && Array.isArray(data)) {
-        data.forEach(item => {
-            if (!isNaN(item)) {
-                numbers.push(item);
-            } else if (typeof item === 'string' && item.length === 1) {
-                alphabets.push(item);
-            }
-        });
+  const numbers = data.filter(item => !isNaN(item));
+  const alphabets = data.filter(item => isNaN(item));
+  const highestAlphabet = alphabets.length ? [alphabets.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).pop()] : [];
 
-        // Find the highest lowercase alphabet
-        const lowercaseAlphabets = alphabets.filter(char => char >= 'a' && char <= 'z');
-        if (lowercaseAlphabets.length > 0) {
-            const highestAlphabet = lowercaseAlphabets.sort().pop();
-            highestLowercase.push(highestAlphabet);
-        }
-    }
-
-    // File handling
-    if (req.file) {
-        file_valid = true;
-        file_mime_type = mime.lookup(req.file.originalname);
-        file_size_kb = (req.file.size / 1024).toFixed(2); // Size in KB
-    }
-
-    // Response object
-    const response = {
-        is_success: true,
-        user_id: user_id,
-        email: collegeEmail,
-        roll_number: collegeRollNo,
-        numbers: numbers,
-        alphabets: alphabets,
-        highest_lowercase_alphabet: highestLowercase,
-        file_valid: file_valid,
-        file_mime_type: file_mime_type,
-        file_size_kb: file_size_kb
-    };
-
-    res.json(response);
+  res.json({
+    is_success: true,
+    user_id: userDetails.user_id,
+    email: userDetails.email,
+    roll_number: userDetails.roll_number,
+    numbers: numbers,
+    alphabets: alphabets,
+    highest_alphabet: highestAlphabet
+  });
 });
 
-// GET Endpoint
+// GET method for the /bfhl route
 app.get('/bfhl', (req, res) => {
-    res.status(200).json({ operation_code: 1 });
+  res.json({
+    operation_code: 1
+  });
 });
 
 // Start the server
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+  console.log(`App running on port ${port}`);
 });
